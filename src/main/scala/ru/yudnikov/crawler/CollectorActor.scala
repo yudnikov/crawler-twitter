@@ -14,6 +14,7 @@ import twitter4j.{IDs, ResponseList, Twitter, User}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 /**
   * Created by Don on 07.09.2017.

@@ -38,8 +38,8 @@ class QueueActor[T](name: String, queueCapacity: Int) extends Actor with Loggabl
         checkOverflow()
         res
       }
-      if (res.length == n) {
-        sender() ! Some(res)
+      if (res.nonEmpty) {
+        sender() ! Some(res.toList)
       } else {
         sender() ! None
       }
@@ -98,6 +98,8 @@ class QueueActor[T](name: String, queueCapacity: Int) extends Actor with Loggabl
         Cassandra.waitersQueueSave(name, q)
       case q: mutable.Queue[Long] =>
         //Cassandra
+      case _ =>
+        //""
     }
     super.postStop()
   }
