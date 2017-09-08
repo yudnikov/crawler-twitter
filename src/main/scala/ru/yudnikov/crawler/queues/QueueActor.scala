@@ -29,9 +29,15 @@ class QueueActor[T](name: String, queueCapacity: Int) extends Actor with Loggabl
         sender() ! None
       }
     case DequeueRequest(n: Int) =>
+      checkOverflow()
       val res = for {
-        i <- 1 to n
-      } yield i
+        _ <- 1 to n
+        if queue.nonEmpty
+      } yield {
+        val res = queue.dequeue()
+        checkOverflow()
+        res
+      }
       if (res.length == n) {
         sender() ! Some(res)
       } else {

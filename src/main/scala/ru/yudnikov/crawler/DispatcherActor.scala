@@ -53,7 +53,7 @@ class DispatcherActor extends Actor with Loggable {
       
       val r = Dependencies.random.nextInt(60000)
       val initDelay = FiniteDuration(r, TimeUnit.MILLISECONDS)
-      val followersCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues("followers"), twitter, followersFunction, "followers"), s"followers-collector-$i")
+      val followersCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues("followers"), twitter, followersFunction, "followers", 1), s"followers-collector-$i")
       // TODO 61 seconds interval
       val interval = FiniteDuration(61, TimeUnit.SECONDS)
       scheduler.schedule(initDelay, interval, followersCollector, CollectorActor.CollectRequest)
@@ -62,12 +62,12 @@ class DispatcherActor extends Actor with Loggable {
       def friendsFunction: (Twitter, Waiter) => IDs = (twitter, waiter: Waiter) =>
         twitter.getFriendsIDs(waiter.id, waiter.cursor)
       
-      val friendsCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues("friends"), twitter, friendsFunction, "friends"), s"friends-collector-$i")
+      val friendsCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues("friends"), twitter, friendsFunction, "friends", 1), s"friends-collector-$i")
       scheduler.schedule(initDelay, interval, friendsCollector, CollectorActor.CollectRequest)
       
       def lookupFunction: (Twitter, List[Long]) => ResponseList[User] = (twitter, longs) =>
         twitter.users().lookupUsers(longs: _*)
-      val dataCollector = context.actorOf(Props(classOf[CollectorActor[List[Long]]], queues("friends"), twitter, friendsFunction, "friends", 100), s"friends-collector-$i")
+      val dataCollector = context.actorOf(Props(classOf[CollectorActor[List[Long]]], queues("friends"), twitter, lookupFunction, "friends", 100), s"data-collector-$i")
       scheduler.schedule(initDelay, FiniteDuration(3000, TimeUnit.MILLISECONDS), dataCollector, CollectorActor.CollectRequest)
       
       i = i + 1

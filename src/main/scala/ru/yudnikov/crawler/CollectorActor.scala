@@ -3,7 +3,7 @@ package ru.yudnikov.crawler
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef}
-import ru.yudnikov.crawler.CollectorActor.{CollectDataRequest, CollectDataResponse, CollectIDsResponse, CollectRequest}
+import ru.yudnikov.crawler.CollectorActor.{CollectDataResponse, CollectIDsResponse, CollectRequest}
 import ru.yudnikov.trash.Loggable
 import ru.yudnikov.trash.twitter.Dependencies
 import akka.pattern.ask
@@ -29,9 +29,9 @@ class CollectorActor[T](queueKeeper: ActorRef, twitter: Twitter, f: (Twitter, T)
       val maybeWaiter = Await.result(futureMaybeT, Duration.Inf)
       logger.trace(s"received maybeWaiter $maybeWaiter")
       maybeWaiter match {
-        case Some(t: T) =>
+        case Some(t: Waiter) =>
           val result = try {
-            Some(f(twitter, t))
+            Some(f(twitter, t.asInstanceOf[T]))
           } catch {
             case e: Exception =>
               logger.error(s"can't get followers by id", e)

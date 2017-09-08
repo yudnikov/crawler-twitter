@@ -25,7 +25,7 @@ object MyApp extends App {
     Cassandra.idsCreateTable("friends")
     Cassandra.idsCreateTable("followers")
     
-    val dispatcherActor = actorSystem.actorOf(Props(classOf[DispatcherActor], actorSystem.scheduler))
+    val dispatcherActor = actorSystem.actorOf(Props(classOf[DispatcherActor]))
     
     dispatcherActor ! DispatcherActor.StartMessage
     
