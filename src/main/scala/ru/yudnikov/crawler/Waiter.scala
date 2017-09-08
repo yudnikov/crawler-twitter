@@ -6,3 +6,9 @@ package ru.yudnikov.crawler
 case class Waiter(id: Long, cursor: Long = -1L) {
   
 }
+
+object Waiter {
+  
+  implicit def toLong(waiter: Waiter): Long = waiter.id
+  
+}

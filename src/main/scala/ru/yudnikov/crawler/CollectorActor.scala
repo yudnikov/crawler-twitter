@@ -30,7 +30,7 @@ class CollectorActor[T](queueKeeper: ActorRef, twitter: Twitter, f: (Twitter, T)
       val maybeWaiter = Await.result(futureMaybeT, Duration.Inf)
       logger.trace(s"received maybeWaiter $maybeWaiter")
       maybeWaiter match {
-        case Some(t: Waiter) =>
+        case Some(t: T) =>
           val result = try {
             Some(f(twitter, t.asInstanceOf[T]))
           } catch {

@@ -131,30 +131,32 @@ object Cassandra extends Loggable {
   }
   
   def membersInsert(ids: Long*): Unit = {
-    val q = ids.map { id =>
-      s"INSERT INTO $keyspace.members (id) values ($id)"
-    }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
-    execute(q)
+    if (ids.nonEmpty) {
+      val q = ids.map { id =>
+        s"INSERT INTO $keyspace.members (id) values ($id)"
+      }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
+      execute(q)
+    }
   }
   
-  def waitersQueueCreateTable(relationType: String): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.${relationType}_queue (id bigint, cursor bigint, PRIMARY KEY (id, cursor));")
+  def waitersQueueCreateTable(name: String): Unit = {
+    execute(s"$createTableIfNotExists $keyspace.${name}_queue (id bigint, cursor bigint, PRIMARY KEY (id, cursor));")
   }
   
-  def waitersQueueDropTable(relationType: String): Unit = {
-    execute(s"$dropTableIfExists $keyspace.${relationType}_queue;")
+  def waitersQueueDropTable(name: String): Unit = {
+    execute(s"$dropTableIfExists $keyspace.${name}_queue;")
   }
   
-  def waitersQueueSave(relationType: String, queue: GenIterable[Waiter]): Unit = {
+  def waitersQueueSave(name: String, queue: GenIterable[Waiter]): Unit = {
     val q = queue.map {
       case Waiter(id: Long, cursor: Long) =>
-        s"INSERT INTO $keyspace.${relationType}_queue (id, cursor) values ($id, $cursor)"
+        s"INSERT INTO $keyspace.${name}_queue (id, cursor) values ($id, $cursor)"
     }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
     execute(q)
   }
   
-  def waitersQueueLoad(relationType: String, size: Int = 0): mutable.Queue[Waiter] = {
-    val q = s"SELECT id, cursor FROM $keyspace.${relationType}_queue${if (size > 0) s" LIMIT $size" else ""};"
+  def waitersQueueLoad(name: String, size: Int = 0): mutable.Queue[Waiter] = {
+    val q = s"SELECT id, cursor FROM $keyspace.${name}_queue${if (size > 0) s" LIMIT $size" else ""};"
     execute(q) match {
       case Success(resultSet) =>
         val queue = new mutable.Queue[Waiter]()
@@ -168,25 +170,25 @@ object Cassandra extends Loggable {
     }
   }
   
-  def waitersQueueDelete(relationType: String, queue: GenIterable[Waiter]): Unit = {
+  def waitersQueueDelete(name: String, queue: GenIterable[Waiter]): Unit = {
     val q = queue.map {
       case Waiter(id: Long, cursor: Long) =>
-        s"DELETE FROM $keyspace.${relationType}_queue WHERE id = $id AND cursor = $cursor"
+        s"DELETE FROM $keyspace.${name}_queue WHERE id = $id AND cursor = $cursor"
     }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
     execute(q)
   }
   
-  def idsCreateTable(relationType: String): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.$relationType (id bigint, cursor bigint, $relationType set<bigint>, PRIMARY KEY (id, cursor));")
+  def idsCreateTable(name: String): Unit = {
+    execute(s"$createTableIfNotExists $keyspace.$name (id bigint, cursor bigint, $name set<bigint>, PRIMARY KEY (id, cursor));")
   }
   
-  def idsDropTable(relationType: String): Unit = {
-    execute(s"$dropTableIfExists $keyspace.$relationType;")
+  def idsDropTable(name: String): Unit = {
+    execute(s"$dropTableIfExists $keyspace.$name;")
   }
   
-  def idsSave(relationType: String, id: Long, cursor: Long, ids: List[Long]): Future[Try[Unit]] = Future {
+  def idsSave(name: String, id: Long, cursor: Long, ids: List[Long]): Future[Try[Unit]] = Future {
     Try {
-      execute(s"INSERT INTO $keyspace.$relationType (id, cursor, $relationType) VALUES ($id, $cursor, {${ids.distinct.mkString(",")}});")
+      execute(s"INSERT INTO $keyspace.$name (id, cursor, $name) VALUES ($id, $cursor, {${ids.distinct.mkString(",")}});")
     }
   }
   

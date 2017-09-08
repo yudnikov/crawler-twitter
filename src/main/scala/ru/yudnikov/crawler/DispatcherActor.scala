@@ -5,8 +5,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Props, Scheduler}
 import com.typesafe.config.Config
-import ru.yudnikov.crawler.DataCollectorActor.CollectDataResponse
-import ru.yudnikov.crawler.CollectorActor.CollectIDsResponse
+import ru.yudnikov.crawler.CollectorActor.{CollectDataResponse, CollectIDsResponse}
 import ru.yudnikov.crawler.DispatcherActor.StartMessage
 import ru.yudnikov.crawler.queues.QueueActor
 import ru.yudnikov.trash.Loggable
@@ -65,10 +64,11 @@ class DispatcherActor extends Actor with Loggable {
       val friendsCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues("friends"), twitter, friendsFunction, "friends", 1), s"friends-collector-$i")
       scheduler.schedule(initDelay, interval, friendsCollector, CollectorActor.CollectRequest)
       
-      def lookupFunction: (Twitter, List[Long]) => Any = (twitter, longs) =>
+      def lookupFunction: (Twitter, List[Long]) => Any = (twitter, longs) => {
         twitter.users().lookupUsers(longs: _*)
+      }
       val dataCollector = context.actorOf(Props(classOf[CollectorActor[List[Long]]], queues("lookup"), twitter, lookupFunction, "lookup", 100), s"data-collector-$i")
-      scheduler.schedule(initDelay, FiniteDuration(3000, TimeUnit.MILLISECONDS), dataCollector, CollectorActor.CollectRequest)
+      scheduler.schedule(initDelay, FiniteDuration(3500, TimeUnit.MILLISECONDS), dataCollector, CollectorActor.CollectRequest)
       
       i = i + 1
     }
@@ -78,15 +78,15 @@ class DispatcherActor extends Actor with Loggable {
     case StartMessage =>
       logger.trace(s"received start message")
       start()
-    case CollectIDsResponse(relationType, source: Waiter, ids, maybeNext) => {
+    case CollectIDsResponse(name, source: Waiter, ids, maybeNext) => {
       logger.debug(s"handling collect ids response:" +
         s"\tsource: $source" +
         s"\tids.size: ${ids.size}" +
         s"\tmaybeNext: $maybeNext")
-      Cassandra.idsSave(relationType, source.id, source.cursor, ids.map(_.id))
+      Cassandra.idsSave(name, source.id, source.cursor, ids.map(_.id))
       maybeNext match {
         case Some(waiter) =>
-          queues(relationType) ! QueueActor.EnqueueRequest(waiter)
+          queues(name) ! QueueActor.EnqueueRequest(waiter)
         case _ =>
       }
       if (ids.length > 1000) {
@@ -97,11 +97,12 @@ class DispatcherActor extends Actor with Loggable {
       val nonExistingSpark = Cassandra.membersNonExistingSpark(idsLongs: _*)
       Cassandra.membersInsert(nonExistingSpark: _*)
       val nonExistingWaiters = ids.filter(follower => nonExistingSpark.contains(follower.id))
-      queues(relationType) ! QueueActor.EnqueueRequest(nonExistingWaiters: _*)
+      queues(name) ! QueueActor.EnqueueRequest(nonExistingWaiters: _*)
+      queues("lookup") ! QueueActor.EnqueueRequest(nonExistingWaiters.map(_.id): _*)
     }
     
-    case CollectDataResponse =>
-    
+    case CollectDataResponse(name, sources, data) =>
+      println(s"recived collect data response")
     case s: String =>
       logger.trace(s"received string: \n\t$s")
   }
