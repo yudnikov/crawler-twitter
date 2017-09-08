@@ -44,28 +44,6 @@ object _Cassandra extends Loggable {
   lazy protected val keyspace: String = Dependencies.config.getString("cassandra.keyspace")
   lazy protected val session: Session = cluster.connect()
   
-  protected def executeFutureUnit(query: String): Future[Try[Unit]] = {
-    if (Dependencies.config.getBoolean("cassandra.executeQueries")) executeFuture(query) map {
-      case Success(_) =>
-        Success()
-      case Failure(exception) =>
-        Failure(exception)
-    } else
-      Future(Success(logger.info(s"query wouldn't be executed: \n$query")))
-  }
-  
-  protected def executeFuture(query: String): Future[Try[ResultSet]] = {
-    try {
-      logger.info(s"executing query: \n$query")
-      //session.executeAsync(session.prepare(query).bind()).asScala map (resultSet => Success(resultSet))
-      session.executeAsync(session.prepare(query).bind()).asInstanceOf[ListenableFuture[ResultSet]].asScala map (resultSet => Success(resultSet))
-    } catch {
-      case e: Exception =>
-        logger.error(s"can't execute query: \n$query", e)
-        Future(Failure(e))
-    }
-  }
-  
   protected def execute(query: String): Try[ResultSet] = {
     try {
       logger.info(s"executing query: \n$query")
@@ -77,30 +55,12 @@ object _Cassandra extends Loggable {
     }
   }
   
-  def createKeyspaceFuture: Future[Unit] = {
-    executeFutureUnit(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };") map {
-      case Success(_) =>
-        Success()
-      case Failure(exception) =>
-        throw exception
-    }
-  }
-  
   def createKeyspace(): Unit = {
-    Await.result(createKeyspaceFuture, Duration.Inf)
-  }
-  
-  def dropKeyspaceFuture: Future[Unit] = {
-    executeFutureUnit(s"DROP KEYSPACE IF EXISTS $keyspace;") map {
-      case Success(_) =>
-        Success()
-      case Failure(exception) =>
-        throw exception
-    }
+    execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };")
   }
   
   def dropKeyspace(): Unit = {
-    Await.result(dropKeyspaceFuture, Duration.Inf)
+    execute(s"DROP KEYSPACE IF EXISTS $keyspace;")
   }
   
   // Twitter
@@ -142,7 +102,7 @@ object _Cassandra extends Loggable {
   def membersInsert(ids: Long*): Unit = {
     val q = ids.map { id =>
       s"INSERT INTO $keyspace.members (id) values ($id)"
-    }.mkString("BEGIN BATCH\n", ";\n", "\nAPPLY BATCH;")
+    }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
     execute(q)
   }
   
@@ -161,7 +121,7 @@ object _Cassandra extends Loggable {
           s"INSERT INTO $keyspace.queue (id, cursor) values ($id, $cursor)"
         case (id: Long, None) =>
           s"INSERT INTO $keyspace.queue (id) values ($id)"
-    }.mkString("BEGIN BATCH\n", ";\n", "\nAPPLY BATCH;")
+    }.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;")
     execute(q)
   }
   

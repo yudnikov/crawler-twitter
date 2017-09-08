@@ -19,8 +19,8 @@ object MyApp extends App {
     
     Cassandra.dropKeyspace()
     Cassandra.createKeyspace()
-    Cassandra.queueCreateTable("friends")
-    Cassandra.queueCreateTable("followers")
+    Cassandra.waitersQueueCreateTable("friends")
+    Cassandra.waitersQueueCreateTable("followers")
     Cassandra.membersCreateTable()
     Cassandra.idsCreateTable("friends")
     Cassandra.idsCreateTable("followers")

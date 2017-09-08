@@ -15,7 +15,7 @@
             </pattern>
         </encoder>
     </appender>
-    <root level="warn">
+    <root level="trace">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
     </root>
