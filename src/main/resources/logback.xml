@@ -6,20 +6,17 @@
             </pattern>
         </encoder>
     </appender>
-    <!--
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>log/log.log</file>
+        <file>log/twitter.log</file>
         <encoder>
             <pattern>
-                %date %-5level [%thread] %logger{128} - %msg%n
+                <!-- %date %-5level [%thread] %logger{128} - %msg%n -->
+                %date %-5level %logger{128} - %msg%n
             </pattern>
         </encoder>
     </appender>
-    -->
-    <root level="info">
+    <root level="warn">
         <appender-ref ref="STDOUT"/>
-        <!--
         <appender-ref ref="FILE"/>
-        -->
     </root>
 </configuration>

@@ -1,7 +1,8 @@
-package ru.yudnikov.crawler.twitter
+package ru.yudnikov.trash.twitter
 
 import java.io.File
 
+import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.{SparkConf, SparkContext}
 import twitter4j.{Twitter, TwitterFactory}
@@ -14,9 +15,11 @@ import scala.util.Random
   */
 object Dependencies {
   
-  val config: Config = ConfigFactory.parseFile(new File(s"src/main/resources/application.conf"))
+  lazy val config: Config = ConfigFactory.parseFile(new File(s"src/main/resources/application.conf"))
   
-  val twitter: Twitter = {
+  lazy val actorSystem = ActorSystem(config.getString("appName"))
+  
+  lazy val twitter: Twitter = {
     val cb = new ConfigurationBuilder()
       .setDebugEnabled(false)
       .setOAuthConsumerKey(config.getString("twitter.OAuth.ConsumerKey"))
@@ -26,13 +29,23 @@ object Dependencies {
     new TwitterFactory(cb.build).getInstance
   }
   
-  val sparkContext: SparkContext = {
+  lazy val sparkContext: SparkContext = {
     val sparkConf: SparkConf = new SparkConf()
-      .setAppName(config.getString("spark.appName"))
+      .setAppName(config.getString("appName"))
       .setMaster(config.getString("spark.master"))
     new SparkContext(sparkConf)
   }
   
-  val random = new Random()
+  lazy val sc2: SparkContext = {
+    val sparkConf = new SparkConf(true)
+      .set("spark.cassandra.connection.host", config.getString("cassandra.host"))
+      .set("spark.cassandra.auth.username", config.getString("cassandra.username"))
+      .set("spark.cassandra.auth.password", config.getString("cassandra.password"))
+      .setAppName(config.getString("appName"))
+      .setMaster(config.getString("spark.master"))
+    new SparkContext(sparkConf)
+  }
+  
+  lazy val random = new Random()
   
 }

@@ -1,10 +1,6 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.trash
 
-import java.util.concurrent.{Callable, Executors, LinkedBlockingQueue, TimeUnit}
-
-import scala.collection.immutable.Queue
-
-
+import java.util.concurrent.{Executors, LinkedBlockingQueue, TimeUnit}
 
 /**
   * Created by Don on 06.09.2017.

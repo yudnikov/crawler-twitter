@@ -1,21 +1,23 @@
-package ru.yudnikov.crawler.twitter
+package ru.yudnikov.trash.twitter
 
 import java.util.concurrent.{LinkedBlockingDeque, LinkedBlockingQueue}
 
 import com.datastax.driver.core.{Cluster, ResultSet, Session}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
-import ru.yudnikov.crawler.Loggable
+import ru.yudnikov.trash.Loggable
+import ru.yudnikov.trash.twitter.Cassandra.session
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration.Duration
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 /**
   * Created by Don on 06.09.2017.
   */
-object Cassandra extends Loggable {
+object _Cassandra extends Loggable {
   
   // guava future to scala future
   implicit class ScalableFuture[T](listenableFuture: ListenableFuture[T]) {
@@ -55,7 +57,8 @@ object Cassandra extends Loggable {
   protected def executeFuture(query: String): Future[Try[ResultSet]] = {
     try {
       logger.info(s"executing query: \n$query")
-      session.executeAsync(session.prepare(query).bind()).asScala map (resultSet => Success(resultSet))
+      //session.executeAsync(session.prepare(query).bind()).asScala map (resultSet => Success(resultSet))
+      session.executeAsync(session.prepare(query).bind()).asInstanceOf[ListenableFuture[ResultSet]].asScala map (resultSet => Success(resultSet))
     } catch {
       case e: Exception =>
         logger.error(s"can't execute query: \n$query", e)

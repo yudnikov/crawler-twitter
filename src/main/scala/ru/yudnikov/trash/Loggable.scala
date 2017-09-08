@@ -1,4 +1,4 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.trash
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory

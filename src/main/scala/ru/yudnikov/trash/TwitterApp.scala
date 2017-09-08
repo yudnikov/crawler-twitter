@@ -1,4 +1,4 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.trash
 
 import java.io.{File, PrintWriter}
 import java.util.concurrent.{ConcurrentHashMap, Executors, LinkedBlockingQueue, TimeUnit}
@@ -7,7 +7,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.joda.time.DateTime
-import ru.yudnikov.crawler.MyApp.logger
+import ru.yudnikov.crawler.{Commons, TwitterUtils}
 import twitter4j.conf.ConfigurationBuilder
 import twitter4j.{Twitter, TwitterFactory}
 
@@ -24,11 +24,11 @@ object TwitterApp extends App with Loggable {
   
   val twitter: Twitter = {
     val cb = new ConfigurationBuilder
-    cb.setDebugEnabled(false)
-      .setOAuthConsumerKey(config.getString("twitter.OAuth.ConsumerKey"))
-      .setOAuthConsumerSecret(config.getString("twitter.OAuth.ConsumerSecret"))
-      .setOAuthAccessToken(config.getString("twitter.OAuth.AccessToken"))
-      .setOAuthAccessTokenSecret(config.getString("twitter.OAuth.AccessTokenSecret"))
+    cb.setDebugEnabled(true)
+      .setOAuthConsumerKey(config.getString("twitter.OAuth.ConsumerKey3"))
+      .setOAuthConsumerSecret(config.getString("twitter.OAuth.ConsumerSecret3"))
+      .setOAuthAccessToken(config.getString("twitter.OAuth.AccessToken3"))
+      .setOAuthAccessTokenSecret(config.getString("twitter.OAuth.AccessTokenSecret3"))
     val tf = new TwitterFactory(cb.build)
     tf.getInstance
   }
@@ -41,7 +41,7 @@ object TwitterApp extends App with Loggable {
     new SparkContext(sparkConf)
   }
   
-  val pool = Executors.newScheduledThreadPool(32)
+  val pool = Executors.newScheduledThreadPool(16)
   
   val members: ConcurrentHashMap[Long, Option[Any]] = new ConcurrentHashMap[Long, Option[Any]]()
   
@@ -88,17 +88,19 @@ object TwitterApp extends App with Loggable {
       }
       println(members.size())
     }*/
-    Commons.repeat({println(list(1000000).length)}, 1)
+    Commons.repeat({
+      println(list(1000000).length)
+    }, 1)
     val lists = for {
       i <- 0 to 390 by 10
     } yield (i, i + 10)
     val rdd = sc.parallelize(lists)
     val rdd2 = rdd.map(t => (t._1 * 100000, t._2 * 100000))
-    val rdd3 = rdd2.map(t => list(t._2, t._1.toLong)).reduce((a,b) => a ::: b)
+    val rdd3 = rdd2.map(t => list(t._2, t._1.toLong)).reduce((a, b) => a ::: b)
     println(rdd3.length)
   }
   
-  test()
+  //test()
   
   //println(members.size())
   
@@ -125,8 +127,7 @@ object TwitterApp extends App with Loggable {
   
   //null
   
-  /*
-  val screenNames0: List[String] = config.getStringList("twitter.startPages").asScala.toList.map(TwitterUtils.getScreenName)
+  val screenNames0: List[String] = config.getStringList("twitter.startPages").asScala.toList.map(TwitterUtils.screenNameFromURL)
   logger.trace(s"zero screen names (${screenNames0.length}) are: $screenNames0")
   
   lazy val screenNames: RDD[String] = sc.parallelize(screenNames0)
@@ -185,9 +186,9 @@ object TwitterApp extends App with Loggable {
         throw new Exception(msg)
     }
     
-    val id      = result._1
-    val cursor  = result._2
-    val ids     = result._3
+    val id = result._1
+    val cursor = result._2
+    val ids = result._3
     
     if (ids.hasNext) {
       q1.put(current -> ids.getNextCursor)
@@ -213,39 +214,7 @@ object TwitterApp extends App with Loggable {
   
   pool.scheduleAtFixedRate(new Runnable {
     override def run(): Unit = processFollowers()
-  }, 0, 61, TimeUnit.SECONDS)
-  */
+  }, 0, 5, TimeUnit.SECONDS)
   
-}
-
-object TwitterUtils extends Loggable {
   
-  def getScreenName(string: String): String = {
-    logger.trace(s"getting screen name from $string")
-    val split = string.split("/")
-    val res = split(split.length - 1)
-    logger.trace(s"got $res")
-    res
-  }
-  
-}
-
-object Commons extends Loggable {
-  
-  def thread(body: => Unit): Thread = {
-    val t = new Thread {
-      override def run(): Unit = body
-    }
-    t.start()
-    t
-  }
-  
-  def repeat(body: => Unit, n: Int = 100000): Unit = {
-    val start = new DateTime()
-    println(s"started $n iterations @ ${start.toLocalTime}")
-    for (i <- 1 to n) {
-      body
-    }
-    println(s"finished $n iterations in ${new DateTime().getMillis - start.getMillis} ms")
-  }
 }
