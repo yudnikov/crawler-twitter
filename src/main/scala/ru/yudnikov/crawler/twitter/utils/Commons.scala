@@ -1,4 +1,4 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.crawler.twitter.utils
 
 import org.joda.time.DateTime
 import ru.yudnikov.trash.Loggable

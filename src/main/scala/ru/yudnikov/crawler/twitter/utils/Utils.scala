@@ -1,4 +1,4 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.crawler.twitter.utils
 
 import java.util
 

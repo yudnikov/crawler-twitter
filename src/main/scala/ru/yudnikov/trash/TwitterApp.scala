@@ -7,7 +7,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.joda.time.DateTime
-import ru.yudnikov.crawler.{Commons, TwitterUtils}
+import ru.yudnikov.crawler.twitter.utils.TwitterUtils
+import ru.yudnikov.crawler.twitter.utils.{Commons, TwitterUtils}
 import twitter4j.conf.ConfigurationBuilder
 import twitter4j.{Twitter, TwitterFactory}
 

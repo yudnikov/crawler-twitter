@@ -21,7 +21,7 @@ object Dependencies {
   
   lazy val twitter: Twitter = {
     val cb = new ConfigurationBuilder()
-      .setDebugEnabled(false)
+      .setDebugEnabled(true)
       .setOAuthConsumerKey(config.getString("twitter.OAuth.ConsumerKey"))
       .setOAuthConsumerSecret(config.getString("twitter.OAuth.ConsumerSecret"))
       .setOAuthAccessToken(config.getString("twitter.OAuth.AccessToken"))

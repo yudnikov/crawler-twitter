@@ -1,25 +1,24 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.crawler.twitter.actors
 
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef}
-import ru.yudnikov.crawler.CollectorActor.{CollectDataResponse, CollectIDsResponse, CollectRequest}
-import ru.yudnikov.trash.Loggable
-import ru.yudnikov.trash.twitter.Dependencies
 import akka.pattern.ask
 import akka.util.Timeout
-import ru.yudnikov.crawler.queues.QueueActor
-import twitter4j.{IDs, ResponseList, Twitter, User}
+import ru.yudnikov.crawler.twitter.Waiter
+import ru.yudnikov.crawler.twitter.actors.CollectorActor.{CollectDataResponse, CollectIDsResponse, CollectRequest}
+import ru.yudnikov.crawler.twitter.enums.Collectibles
+import ru.yudnikov.trash.Loggable
+import twitter4j._
 
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
 
 /**
   * Created by Don on 07.09.2017.
   */
-class CollectorActor[T](queueKeeper: ActorRef, twitter: Twitter, f: (Twitter, T) => Any, name: String, collectBy: Int = 1) extends Actor with Loggable {
+class CollectorActor[T](queueKeeper: ActorRef, twitter: Twitter, f: (Twitter, T) => Any, name: Collectibles.Value, collectBy: Int = 1) extends Actor with Loggable {
   
   implicit val timeout = Timeout(60, TimeUnit.SECONDS)
   
@@ -56,12 +55,14 @@ class CollectorActor[T](queueKeeper: ActorRef, twitter: Twitter, f: (Twitter, T)
               result match {
                 case Some(users: ResponseList[User]) =>
                   val data = users.iterator().asScala map { user =>
-                    Map(
+                    /*user.getId -> Map(
                       "name" -> user.getName,
                       "email" -> user.getEmail
-                    ).toString()
+                    ).toString()*/
+                    user.getId -> TwitterObjectFactory.getRawJSON(user)
                   }
-                  CollectDataResponse(name, longs, data.toList)
+                  //val json =
+                  CollectDataResponse(name, longs, data.toMap)
               }
           }
           sender() ! answer
@@ -76,8 +77,8 @@ object CollectorActor {
   
   object CollectRequest
   
-  case class CollectIDsResponse(name: String, source: Waiter, followers: List[Waiter], maybeNext: Option[Waiter] = None)
+  case class CollectIDsResponse(name: Collectibles.Value, source: Waiter, followers: List[Waiter], maybeNext: Option[Waiter] = None)
   
-  case class CollectDataResponse(name: String, sources: List[Long], data: List[String])
+  case class CollectDataResponse(name: Collectibles.Value, sources: List[Long], data: Map[Long, String])
   
 }

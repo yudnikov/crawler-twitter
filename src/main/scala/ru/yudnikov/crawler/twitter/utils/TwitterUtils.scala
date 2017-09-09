@@ -1,4 +1,4 @@
-package ru.yudnikov.crawler
+package ru.yudnikov.crawler.twitter.utils
 
 import ru.yudnikov.trash.Loggable
 import twitter4j.conf.ConfigurationBuilder
@@ -19,14 +19,15 @@ object TwitterUtils extends Loggable {
   
   def getTwitter(map: Map[String, String], check: Boolean = true): Twitter = {
     val cb = new ConfigurationBuilder()
-      .setDebugEnabled(false)
+      .setDebugEnabled(true)
       .setOAuthConsumerKey(map("ConsumerKey"))
       .setOAuthConsumerSecret(map("ConsumerSecret"))
       .setOAuthAccessToken(map("AccessToken"))
       .setOAuthAccessTokenSecret(map("AccessTokenSecret"))
+      .setJSONStoreEnabled(true)
     val twitter = new TwitterFactory(cb.build).getInstance
     if (check) try {
-      val id = twitter.getId
+      twitter.getId
       logger.debug(s"got twitter by \n\t$map")
     } catch {
       case e: Exception =>

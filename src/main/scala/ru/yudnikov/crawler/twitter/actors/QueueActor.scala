@@ -1,10 +1,10 @@
-package ru.yudnikov.crawler.queues
+package ru.yudnikov.crawler.twitter.actors
 
 import akka.actor.Actor
-import ru.yudnikov.crawler.Waiter
-import ru.yudnikov.crawler.queues.QueueActor.{DequeueRequest, EnqueueRequest}
+import QueueActor.{DequeueRequest, EnqueueRequest}
+import ru.yudnikov.crawler.twitter.Waiter
+import ru.yudnikov.crawler.twitter.storage.Cassandra
 import ru.yudnikov.trash.Loggable
-import ru.yudnikov.trash.twitter.Cassandra
 
 import scala.collection.mutable
 
@@ -94,12 +94,12 @@ class QueueActor[T](name: String, queueCapacity: Int) extends Actor with Loggabl
   override def postStop(): Unit = {
     logger.info(s"terminating queue keeper")
     queue match {
-      case q: mutable.Queue[Waiter] =>
+      case q: mutable.Queue[Waiter] if q.nonEmpty && q.head.isInstanceOf[Waiter] =>
         Cassandra.waitersQueueSave(name, q)
-      case q: mutable.Queue[Long] =>
-        //Cassandra
+      case q: mutable.Queue[Long] if q.nonEmpty && q.head.isInstanceOf[Long] =>
+        Cassandra.longsQueueSave(name, q)
       case _ =>
-        //""
+        logger.warn(s"unmatched case")
     }
     super.postStop()
   }

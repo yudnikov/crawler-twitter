@@ -5,7 +5,6 @@ import java.util.concurrent.{LinkedBlockingDeque, LinkedBlockingQueue}
 import com.datastax.driver.core.{Cluster, ResultSet, Session}
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import ru.yudnikov.trash.Loggable
-import ru.yudnikov.trash.twitter.Cassandra.session
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.ExecutionContext.Implicits.global
