@@ -1,7 +1,6 @@
 package ru.yudnikov.crawler.twitter.utils
 
 import org.joda.time.DateTime
-import ru.yudnikov.trash.Loggable
 
 /**
   * Created by Don on 08.09.2017.

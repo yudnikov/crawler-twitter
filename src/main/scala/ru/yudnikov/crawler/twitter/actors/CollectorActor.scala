@@ -8,7 +8,7 @@ import akka.util.Timeout
 import ru.yudnikov.crawler.twitter.Waiter
 import ru.yudnikov.crawler.twitter.actors.CollectorActor.{CollectDataResponse, CollectIDsResponse, CollectRequest}
 import ru.yudnikov.crawler.twitter.enums.Collectibles
-import ru.yudnikov.trash.Loggable
+import ru.yudnikov.crawler.twitter.utils.Loggable
 import twitter4j._
 
 import scala.collection.JavaConverters._

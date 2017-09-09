@@ -1,4 +1,4 @@
-package ru.yudnikov.trash
+package ru.yudnikov.crawler.twitter.utils
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory

@@ -4,7 +4,7 @@ import akka.actor.Actor
 import QueueActor.{DequeueRequest, EnqueueRequest}
 import ru.yudnikov.crawler.twitter.Waiter
 import ru.yudnikov.crawler.twitter.storage.Cassandra
-import ru.yudnikov.trash.Loggable
+import ru.yudnikov.crawler.twitter.utils.Loggable
 
 import scala.collection.mutable
 

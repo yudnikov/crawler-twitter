@@ -1,6 +1,6 @@
 package ru.yudnikov.crawler.twitter.utils
 
-import ru.yudnikov.trash.Loggable
+import ru.yudnikov.crawler.twitter.enums.Markers
 import twitter4j.conf.ConfigurationBuilder
 import twitter4j.{Twitter, TwitterFactory}
 
@@ -28,10 +28,10 @@ object TwitterUtils extends Loggable {
     val twitter = new TwitterFactory(cb.build).getInstance
     if (check) try {
       twitter.getId
-      logger.debug(s"got twitter by \n\t$map")
+      logger.debug(Markers.CONFIDENT, s"got twitter by \n\t$map")
     } catch {
       case e: Exception =>
-        logger.error(s"can't get twitter by \n\t$map", e)
+        logger.error(Markers.CONFIDENT, s"can't get twitter by \n\t$map", e)
     }
     twitter
   }

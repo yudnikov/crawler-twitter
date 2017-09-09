@@ -6,8 +6,10 @@ scalaVersion := "2.11.8"
 
 // https://mvnrepository.com/artifact/org.json4s/json4s-native_2.11
 libraryDependencies += "org.json4s" % "json4s-native_2.11" % "3.5.3"
+
 // https://mvnrepository.com/artifact/org.twitter4j/twitter4j-core
 libraryDependencies += "org.twitter4j" % "twitter4j-core" % "4.0.6"
+
 // https://mvnrepository.com/artifact/com.typesafe/config
 libraryDependencies += "com.typesafe" % "config" % "1.2.1"
 // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic

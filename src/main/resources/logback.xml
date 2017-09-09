@@ -7,7 +7,7 @@
         </encoder>
     </appender>
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>log/twitter2.log</file>
+        <file>log/twitter.log</file>
         <encoder>
             <pattern>
                 <!-- %date %-5level [%thread] %logger{128} - %msg%n -->
@@ -15,7 +15,7 @@
             </pattern>
         </encoder>
     </appender>
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
     </root>

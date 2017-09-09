@@ -6,15 +6,15 @@ import akka.actor.{Actor, Props}
 import ru.yudnikov.crawler.twitter.actors.PerformanceCounterActor.PerformanceCountResponse
 import CollectorActor.{CollectDataResponse, CollectIDsResponse}
 import DispatcherActor.StartMessage
+import org.json4s.native.Serialization
 import ru.yudnikov.crawler.twitter.enums.{Collectibles, Markers}
 import ru.yudnikov.crawler.twitter.storage.Cassandra
-import ru.yudnikov.crawler.twitter.utils.{TwitterUtils, Utils}
-import ru.yudnikov.crawler.twitter.utils.Utils
-import ru.yudnikov.crawler.twitter.Waiter
+import ru.yudnikov.crawler.twitter.utils.{Loggable, TwitterUtils, Utils}
+import ru.yudnikov.crawler.twitter.{Dependencies, Waiter}
 import ru.yudnikov.crawler.twitter.actors.PerformanceCounterActor.PerformanceCountResponse
-import ru.yudnikov.trash.Loggable
-import ru.yudnikov.trash.twitter.Dependencies
 import twitter4j._
+
+import scala.collection.JavaConverters._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -32,61 +32,83 @@ class DispatcherActor extends Actor with Loggable {
   
   def start(): Unit = {
     
-    //queues()
-    val twitters = Utils.getMapsFromConfig(Dependencies.config, "twitter.OAuths").map { map =>
-      TwitterUtils.getTwitter(map.asInstanceOf[Map[String, String]])
-    }
-  
     val scheduler = Dependencies.actorSystem.scheduler
     
     var i = 1
-    twitters.foreach { twitter =>
-      
-      // followers ids collector
-      def followersFunction: (Twitter, Waiter) => Any = (twitter, waiter: Waiter) =>
-        twitter.getFollowersIDs(waiter.id, waiter.cursor)
-      
-      val r = Dependencies.random.nextInt(60000)
-
-      val followersCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues(Collectibles.FOLLOWERS), twitter, followersFunction, Collectibles.FOLLOWERS, 1), s"followers-collector-$i")
-      scheduler.schedule(r.millis, 61.seconds, followersCollector, CollectorActor.CollectRequest)
-      
-      // friends ids collector
-      def friendsFunction: (Twitter, Waiter) => Any = (twitter, waiter: Waiter) =>
-        twitter.getFriendsIDs(waiter.id, waiter.cursor)
-      
-      val friendsCollector = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues(Collectibles.FRIENDS), twitter, friendsFunction, Collectibles.FRIENDS, 1), s"friends-collector-$i")
-      scheduler.schedule(r.millis, 61.seconds, friendsCollector, CollectorActor.CollectRequest)
-      
-      def lookupFunction: (Twitter, List[Long]) => Any = (twitter, longs) => {
-        twitter.users().lookupUsers(longs: _*)
+    
+    Dependencies.twitters.foreach { twitter =>
+  
+      val idsInterval = 60500
+      val r1 = Dependencies.random.nextInt(idsInterval).millis
+  
+      def scheduleFollowersIDsCollector(): Unit = {
+        
+        def followersFunction: (Twitter, Waiter) => Any = (twitter, waiter: Waiter) =>
+          twitter.getFollowersIDs(waiter.id, waiter.cursor)
+        
+        val actorRef = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues(Collectibles.FOLLOWERS), twitter, followersFunction, Collectibles.FOLLOWERS, 1), s"followers-collector-$i")
+        
+        scheduler.schedule(r1, idsInterval.millis, actorRef, CollectorActor.CollectRequest)
       }
-      val dataCollector = context.actorOf(Props(classOf[CollectorActor[List[Long]]], queues(Collectibles.LOOKUP), twitter, lookupFunction, Collectibles.LOOKUP, 100), s"data-collector-$i")
-      scheduler.schedule(r.millis, 3.2.seconds, dataCollector, CollectorActor.CollectRequest)
+      
+      scheduleFollowersIDsCollector()
+  
+      def scheduleFriendsIDsCollector(): Unit = {
+  
+        // friends ids collector
+        def friendsFunction: (Twitter, Waiter) => Any = (twitter, waiter: Waiter) =>
+          twitter.getFriendsIDs(waiter.id, waiter.cursor)
+        
+        val actor = context.actorOf(Props(classOf[CollectorActor[Waiter]], queues(Collectibles.FRIENDS), twitter, friendsFunction, Collectibles.FRIENDS, 1), s"friends-collector-$i")
+        
+        scheduler.schedule(r1, 61.seconds, actor, CollectorActor.CollectRequest)
+      }
+      
+      scheduleFriendsIDsCollector()
+      
+      val lookupInterval = 3100
+      val r2 = Dependencies.random.nextInt(lookupInterval).millis
+  
+      def scheduleDataCollector(): Unit = {
+        
+        def lookupFunction: (Twitter, List[Long]) => Any = (twitter, longs) =>
+          twitter.users().lookupUsers(longs: _*)
+  
+        // need to wait 1 iteration for 1st twitter
+        val initDelay = if (i == 1) lookupInterval.millis + r2 else r2
+        val dataCollector = context.actorOf(Props(classOf[CollectorActor[List[Long]]], queues(Collectibles.LOOKUP), twitter, lookupFunction, Collectibles.LOOKUP, 100), s"data-collector-$i")
+        
+        scheduler.schedule(initDelay, lookupInterval.millis, dataCollector, CollectorActor.CollectRequest)
+      }
+      
+      scheduleDataCollector()
       
       i = i + 1
     }
     
     val performanceCounter = context.actorOf(Props(classOf[PerformanceCounterActor]))
-    
-    performanceCounter ! PerformanceCounterActor.PerformanceCountRequest
-    
+    //performanceCounter ! PerformanceCounterActor.PerformanceCountRequest
     scheduler.schedule(0.seconds, 1.minute, performanceCounter, PerformanceCounterActor.PerformanceCountRequest)
     
   }
   
-  private def enqueue0(): Unit = {
+  private def enqueue0(twitter: Twitter): Unit = {
     // TODO pass this to kick-start
-    val ids0 = List(Waiter(905662195106627584L), Waiter(865495825211768837L), Waiter(2350536240L), Waiter(2966223190L))
-    queues(Collectibles.FOLLOWERS) ! QueueActor.EnqueueRequest(ids0: _*)
-    queues(Collectibles.FRIENDS) ! QueueActor.EnqueueRequest(ids0: _*)
-    queues(Collectibles.LOOKUP) ! QueueActor.EnqueueRequest(ids0.map(_.id): _*)
+    val ids0 = Dependencies.config.getLongList(s"twitter.startIDs").asScala.toList.map(_.toLong)
+    val screenNames = Dependencies.config.getStringList(s"twitter.startPages").asScala.map(TwitterUtils.screenNameFromURL).toList
+    assume(screenNames.length <= 100)
+    val idsFromScreenNames = twitter.users().lookupUsers(screenNames: _*).asScala.map(_.getId).toList
+    val ids = ids0 ::: idsFromScreenNames
+    val waiters = ids.map(long => Waiter(long))
+    queues(Collectibles.FOLLOWERS) ! QueueActor.EnqueueRequest(waiters: _*)
+    queues(Collectibles.FRIENDS) ! QueueActor.EnqueueRequest(waiters: _*)
+    queues(Collectibles.LOOKUP) ! QueueActor.EnqueueRequest(ids: _*)
   }
   
   override def receive: Receive = {
     case StartMessage =>
       logger.trace(Markers.DISPATCHING, s"received start message")
-      enqueue0()
+      enqueue0(Dependencies.twitters.head)
       start()
     case CollectIDsResponse(name, source: Waiter, ids, maybeNext) => {
       logger.debug(Markers.DISPATCHING, s"recived collect ids response:" +
@@ -116,8 +138,11 @@ class DispatcherActor extends Actor with Loggable {
         s"\tsources = $sources\n" +
         s"\tdata = $data")
       Cassandra.lookupSave(data)
-    case PerformanceCountResponse(date, result) =>
-      logger.info(Markers.PERFORMANCE, s"at the moment of $date collected: ${result.mkString("\n\t", "\n\t", "")}")
+    case PerformanceCountResponse(seconds, result) =>
+      logger.info(Markers.PERFORMANCE, s"at the moment of $seconds collected: ${result.mkString("\n\t", "\n\t", "")}")
+      implicit val formats = org.json4s.DefaultFormats
+      val json = Serialization.write(result.map(t => t._1.toString -> t._2))
+      Cassandra.performanceSave(seconds, json)
     case s: String =>
       logger.trace(Markers.DISPATCHING, s"received string: \n\t$s")
   }

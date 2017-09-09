@@ -4,7 +4,6 @@ import akka.actor.Props
 import ru.yudnikov.crawler.twitter.actors.DispatcherActor
 import ru.yudnikov.crawler.twitter.enums.Collectibles
 import ru.yudnikov.crawler.twitter.storage.Cassandra
-import ru.yudnikov.trash.twitter.Dependencies
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -16,18 +15,22 @@ import scala.io.StdIn
 object TwitterApp extends App {
   
   val actorSystem = Dependencies.actorSystem
+  val config = Dependencies.config
   
   def start(): Unit = {
     
-    Cassandra.dropKeyspace()
-    Cassandra.createKeyspace()
-    Cassandra.waitersQueueCreateTable(Collectibles.FRIENDS)
-    Cassandra.waitersQueueCreateTable(Collectibles.FOLLOWERS)
-    Cassandra.longsQueueCreateTable(Collectibles.LOOKUP)
-    Cassandra.membersCreateTable()
-    Cassandra.idsCreateTable(Collectibles.FRIENDS)
-    Cassandra.idsCreateTable(Collectibles.FOLLOWERS)
-    Cassandra.lookupCreateTable()
+    if (config.getBoolean("prepareStorage")) {
+      //Cassandra.dropKeyspace()
+      Cassandra.createKeyspace()
+      Cassandra.waitersQueueCreateTable(Collectibles.FRIENDS)
+      Cassandra.waitersQueueCreateTable(Collectibles.FOLLOWERS)
+      Cassandra.longsQueueCreateTable(Collectibles.LOOKUP)
+      Cassandra.membersCreateTable()
+      Cassandra.idsCreateTable(Collectibles.FRIENDS)
+      Cassandra.idsCreateTable(Collectibles.FOLLOWERS)
+      Cassandra.lookupCreateTable()
+      Cassandra.performanceCreateTable()
+    }
     
     val dispatcherActor = actorSystem.actorOf(Props(classOf[DispatcherActor]))
     

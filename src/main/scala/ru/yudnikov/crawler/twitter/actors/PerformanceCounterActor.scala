@@ -5,7 +5,7 @@ import org.joda.time.{DateTime, Seconds}
 import PerformanceCounterActor.{PerformanceCountRequest, PerformanceCountResponse}
 import ru.yudnikov.crawler.twitter.enums.Collectibles
 import ru.yudnikov.crawler.twitter.storage.Cassandra
-import ru.yudnikov.trash.Loggable
+import ru.yudnikov.crawler.twitter.utils.Loggable
 
 /**
   * Created by Don on 09.09.2017.
@@ -25,7 +25,7 @@ class PerformanceCounterActor extends Actor with Loggable {
         startedLatch = true
       } else {
         val currentCheck = new DateTime() -> countable.map(v => v -> Cassandra.tableCount(v)).toMap
-        val answer = Seconds.secondsBetween(currentCheck._1, previous._1) -> currentCheck._2.map { current =>
+        val answer = Seconds.secondsBetween(previous._1, currentCheck._1) -> currentCheck._2.map { current =>
           current._1 -> (current._2 - previous._2(current._1))
         }
         previous = currentCheck

@@ -1,12 +1,13 @@
-package ru.yudnikov.trash.twitter
+package ru.yudnikov.crawler.twitter
 
 import java.io.File
 
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.{SparkConf, SparkContext}
-import twitter4j.{Twitter, TwitterFactory}
+import ru.yudnikov.crawler.twitter.utils.{TwitterUtils, Utils}
 import twitter4j.conf.ConfigurationBuilder
+import twitter4j.{Twitter, TwitterFactory}
 
 import scala.util.Random
 
@@ -47,5 +48,9 @@ object Dependencies {
   }
   
   lazy val random = new Random()
+  
+  val twitters: List[Twitter] = Utils.getMapsFromConfig(Dependencies.config, "twitter.OAuths").map { map =>
+    TwitterUtils.getTwitter(map.asInstanceOf[Map[String, String]])
+  }
   
 }

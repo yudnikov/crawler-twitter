@@ -1,14 +1,15 @@
 package ru.yudnikov.crawler.twitter.storage
 
+import java.util.UUID
+
 import com.datastax.driver.core._
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import org.joda.time.DateTime
 import ru.yudnikov.crawler.twitter.enums.Collectibles.Collectibles
-import ru.yudnikov.crawler.twitter.Waiter
+import ru.yudnikov.crawler.twitter.{Dependencies, Waiter}
 import ru.yudnikov.crawler.twitter.enums.{Collectibles, Markers}
-import ru.yudnikov.trash.Loggable
-import ru.yudnikov.trash.twitter.Dependencies
+import ru.yudnikov.crawler.twitter.utils.Loggable
 
 import scala.collection.JavaConverters._
 import scala.collection.{GenIterable, mutable}
@@ -43,7 +44,7 @@ object Cassandra extends Loggable {
   
   lazy val cluster: Cluster = Cluster.builder().addContactPoint(host).withPort(port).build()
   
-  lazy protected val keyspace: String = Dependencies.config.getString("cassandra.keyspace")
+  lazy val keyspace: String = Dependencies.config.getString("cassandra.keyspace")
   lazy protected val session: Session = cluster.connect()
   
   def terminate(): Unit = {
@@ -53,7 +54,7 @@ object Cassandra extends Loggable {
   
   protected def execute(query: String): Try[ResultSet] = {
     try {
-      logger.info(Markers.STORING, s"executing query: \n$query")
+      logger.debug(Markers.STORING, s"executing query: \n$query")
       Success(session.execute(query))
     } catch {
       case e: Exception =>
@@ -64,7 +65,7 @@ object Cassandra extends Loggable {
   
   protected def execute(query: String, values: Seq[AnyRef]): Try[ResultSet] = {
     try {
-      logger.info(Markers.STORING, s"executing query with values: \n" +
+      logger.debug(Markers.STORING, s"executing query with values: \n" +
         s"\tquery = $query\n" +
         s"\tvalues = $values")
       Success(session.execute(query, values: _*))
@@ -72,6 +73,18 @@ object Cassandra extends Loggable {
       case e: Exception =>
         logger.error(s"can't execute query: \n$query", e)
         Failure(e)
+    }
+  }
+  
+  def executeBatch(queries: GenIterable[String]): Unit = {
+    if (queries.nonEmpty) {
+      execute(queries.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;"))
+    }
+  }
+  
+  def executeBatch(queries: GenIterable[String], values: Seq[AnyRef]): Unit = {
+    if (queries.nonEmpty) {
+      execute(queries.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;"), values)
     }
   }
   
@@ -85,15 +98,15 @@ object Cassandra extends Loggable {
   
   // Twitter
   
-  val createTableIfNotExists = "CREATE TABLE IF NOT EXISTS"
-  val dropTableIfExists = "DROP TABLE IF EXISTS"
+  val createTable = "CREATE TABLE IF NOT EXISTS"
+  val dropTable = "DROP TABLE IF EXISTS"
   
   def membersCreateTable(): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.members (id bigint PRIMARY KEY);")
+    execute(s"$createTable $keyspace.members (id bigint PRIMARY KEY);")
   }
   
   def membersDropTable(): Unit = {
-    execute(s"$dropTableIfExists $keyspace.members;")
+    execute(s"$dropTable $keyspace.members;")
   }
   
   def membersExists(id: Long): Boolean = {
@@ -144,7 +157,7 @@ object Cassandra extends Loggable {
     result
   }
   
-  private lazy val tables: Map[Collectibles, CassandraTableScanRDD[CassandraRow]] = Map(
+  lazy val tables: Map[Collectibles, CassandraTableScanRDD[CassandraRow]] = Map(
     Collectibles.MEMBERS -> Dependencies.sparkContext.cassandraTable(keyspace, Collectibles.MEMBERS.toString.toLowerCase()),
     Collectibles.FOLLOWERS -> Dependencies.sparkContext.cassandraTable(keyspace, Collectibles.FOLLOWERS.toString.toLowerCase()),
     Collectibles.FRIENDS -> Dependencies.sparkContext.cassandraTable(keyspace, Collectibles.FRIENDS.toString.toLowerCase()),
@@ -171,11 +184,11 @@ object Cassandra extends Loggable {
   }
   
   def waitersQueueCreateTable(name: Collectibles): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.${name}_queue (id bigint, cursor bigint, PRIMARY KEY (id, cursor));")
+    execute(s"$createTable $keyspace.${name}_queue (id bigint, cursor bigint, PRIMARY KEY (id, cursor));")
   }
   
   def waitersQueueDropTable(name: String): Unit = {
-    execute(s"$dropTableIfExists $keyspace.${name}_queue;")
+    execute(s"$dropTable $keyspace.${name}_queue;")
   }
   
   def waitersQueueSave(name: String, queue: GenIterable[Waiter]): Unit = {
@@ -211,11 +224,11 @@ object Cassandra extends Loggable {
   
   // TODO need some generalization...
   def longsQueueCreateTable(name: Collectibles): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.${name}_queue (id bigint, PRIMARY KEY (id));")
+    execute(s"$createTable $keyspace.${name}_queue (id bigint, PRIMARY KEY (id));")
   }
   
   def longsQueueDropTable(name: String): Unit = {
-    execute(s"$dropTableIfExists $keyspace.${name}_queue;")
+    execute(s"$dropTable $keyspace.${name}_queue;")
   }
   
   def longsQueueSave(name: String, queue: GenIterable[Long]): Unit = {
@@ -247,11 +260,11 @@ object Cassandra extends Loggable {
   
   
   def idsCreateTable(name: Collectibles): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.$name (id bigint, cursor bigint, $name set<bigint>, PRIMARY KEY (id, cursor));")
+    execute(s"$createTable $keyspace.$name (id bigint, cursor bigint, $name set<bigint>, PRIMARY KEY (id, cursor));")
   }
   
   def idsDropTable(name: Collectibles): Unit = {
-    execute(s"$dropTableIfExists $keyspace.$name;")
+    execute(s"$dropTable $keyspace.$name;")
   }
   
   def idsSave(name: Collectibles, id: Long, cursor: Long, ids: List[Long]): Future[Try[Unit]] = Future {
@@ -262,29 +275,28 @@ object Cassandra extends Loggable {
   
   
   def lookupCreateTable(): Unit = {
-    execute(s"$createTableIfNotExists $keyspace.lookup (id bigint PRIMARY KEY, data text);")
+    execute(s"$createTable $keyspace.lookup (id bigint PRIMARY KEY, data text);")
   }
   
   def lookupDropTable(): Unit = {
-    execute(s"$dropTableIfExists $keyspace.lookup;")
+    execute(s"$dropTable $keyspace.lookup;")
   }
   
   def lookupSave(data: Map[Long, String]): Unit = {
-    val q = data map { t =>
+    data map { t =>
       execute(s"INSERT INTO $keyspace.lookup (id, data) VALUES (${t._1}, ?)", Seq(t._2))
     }
-    //executeBatch(q, data.values.toSeq)
   }
   
-  def executeBatch(queries: GenIterable[String]): Unit = {
-    if (queries.nonEmpty) {
-      execute(queries.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;"))
-    }
+  def performanceCreateTable(): Unit = {
+    execute(s"$createTable $keyspace.performance (id uuid PRIMARY KEY, seconds int, data varchar);")
   }
   
-  def executeBatch(queries: GenIterable[String], values: Seq[AnyRef]): Unit = {
-    if (queries.nonEmpty) {
-      execute(queries.mkString("BEGIN BATCH\n", ";\n", ";\nAPPLY BATCH;"), values)
-    }
+  def performanceDropTable(): Unit = {
+    execute(s"$dropTable $keyspace.performance;")
+  }
+  
+  def performanceSave(seconds: Int, data: String): Unit = {
+    execute(s"INSERT INTO $keyspace.performance (id, seconds, data) VALUES (${UUID.randomUUID()}, $seconds, ?);", Seq(data))
   }
 }
