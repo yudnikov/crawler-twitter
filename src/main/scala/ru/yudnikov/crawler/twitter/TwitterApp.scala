@@ -4,35 +4,35 @@ import akka.actor.Props
 import ru.yudnikov.crawler.twitter.actors.DispatcherActor
 import ru.yudnikov.crawler.twitter.enums.Collectibles
 import ru.yudnikov.crawler.twitter.storage.Cassandra
+import ru.yudnikov.crawler.twitter.utils.Loggable
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.io.StdIn
 
-/**
-  * Created by Don on 07.09.2017.
-  */
-object TwitterApp extends App {
+/** The entry point of application */
+object TwitterApp extends App with Loggable {
   
-  val actorSystem = Dependencies.actorSystem
-  val config = Dependencies.config
+  val dependencies = Dependencies()
   
-  def start(): Unit = {
+  val actorSystem = dependencies.actorSystem
+  val config = dependencies.config
+  
+  lazy val cassandra = dependencies.cassandra
+  
+  private def start(): Unit = {
     
-    if (config.getBoolean("prepareStorage")) {
-      //Cassandra.dropKeyspace()
-      Cassandra.createKeyspace()
-      Cassandra.waitersQueueCreateTable(Collectibles.FRIENDS)
-      Cassandra.waitersQueueCreateTable(Collectibles.FOLLOWERS)
-      Cassandra.longsQueueCreateTable(Collectibles.LOOKUP)
-      Cassandra.membersCreateTable()
-      Cassandra.idsCreateTable(Collectibles.FRIENDS)
-      Cassandra.idsCreateTable(Collectibles.FOLLOWERS)
-      Cassandra.lookupCreateTable()
-      Cassandra.performanceCreateTable()
+    if (config.getBoolean("dropKeyspace")) {
+      logger.warn(s"KEYSPACE WOULD BE DROPPED!")
+      cassandra.dropKeyspace()
     }
     
-    val dispatcherActor = actorSystem.actorOf(Props(classOf[DispatcherActor]))
+    if (config.getBoolean("prepareStorage")) {
+      logger.info(s"keyspace would be prepared")
+      cassandra.prepareStorage()
+    }
+    
+    val dispatcherActor = actorSystem.actorOf(Props(classOf[DispatcherActor], dependencies))
     
     dispatcherActor ! DispatcherActor.StartMessage
     
@@ -45,6 +45,6 @@ object TwitterApp extends App {
   StdIn.readLine()
   
   Await.result(actorSystem.terminate(), Duration.Inf)
-  Cassandra.terminate()
+  cassandra.terminate()
 
 }

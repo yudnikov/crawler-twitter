@@ -5,30 +5,19 @@ import java.io.File
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.spark.{SparkConf, SparkContext}
+import ru.yudnikov.crawler.twitter.storage.Cassandra
 import ru.yudnikov.crawler.twitter.utils.{TwitterUtils, Utils}
 import twitter4j.conf.ConfigurationBuilder
 import twitter4j.{Twitter, TwitterFactory}
 
 import scala.util.Random
 
-/**
-  * Created by Don on 06.09.2017.
-  */
-object Dependencies {
+/** Common dependencies */
+case class Dependencies(configName: String = "application.conf") {
   
-  lazy val config: Config = ConfigFactory.parseFile(new File(s"src/main/resources/application.conf"))
+  lazy val config: Config = ConfigFactory.parseFile(new File(s"src/main/resources/$configName"))
   
   lazy val actorSystem = ActorSystem(config.getString("appName"))
-  
-  lazy val twitter: Twitter = {
-    val cb = new ConfigurationBuilder()
-      .setDebugEnabled(true)
-      .setOAuthConsumerKey(config.getString("twitter.OAuth.ConsumerKey"))
-      .setOAuthConsumerSecret(config.getString("twitter.OAuth.ConsumerSecret"))
-      .setOAuthAccessToken(config.getString("twitter.OAuth.AccessToken"))
-      .setOAuthAccessTokenSecret(config.getString("twitter.OAuth.AccessTokenSecret"))
-    new TwitterFactory(cb.build).getInstance
-  }
   
   lazy val sparkContext: SparkContext = {
     val sparkConf: SparkConf = new SparkConf()
@@ -49,7 +38,9 @@ object Dependencies {
   
   lazy val random = new Random()
   
-  val twitters: List[Twitter] = Utils.getMapsFromConfig(Dependencies.config, "twitter.OAuths").map { map =>
+  lazy val cassandra = new Cassandra(config, sparkContext)
+  
+  lazy val twitters: List[Twitter] = Utils.getMapsFromConfig(config, "twitter.OAuths").map { map =>
     TwitterUtils.getTwitter(map.asInstanceOf[Map[String, String]])
   }
   

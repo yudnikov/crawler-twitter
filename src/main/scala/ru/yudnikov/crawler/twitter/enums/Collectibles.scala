@@ -1,8 +1,6 @@
 package ru.yudnikov.crawler.twitter.enums
 
-/**
-  * Created by Don on 08.09.2017.
-  */
+/** Fundamental enumeration, means "what to collect" */
 object Collectibles extends Enumeration {
   
   type Collectibles = Value

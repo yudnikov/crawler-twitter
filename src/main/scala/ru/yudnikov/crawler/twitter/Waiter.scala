@@ -1,11 +1,12 @@
 package ru.yudnikov.crawler.twitter
 
-/**
-  * Created by Don on 07.09.2017.
+/** Basic class, contained in IDs collecting queue
+  *
+  * @constructor create a new waiter
+  * @param id twitter user id
+  * @param cursor cursor position from what to take IDs
   */
-case class Waiter(id: Long, cursor: Long = -1L) {
-  
-}
+case class Waiter(id: Long, cursor: Long = -1L)
 
 object Waiter {
   

@@ -6,11 +6,15 @@ import com.typesafe.config.Config
 
 import scala.collection.JavaConverters._
 
-/**
-  * Created by Don on 07.09.2017.
-  */
+/** Some common utilities */
 object Utils {
   
+  /** Gets list of maps [string, any] from scala config
+    *
+    * @param config config instance
+    * @param path string path to extract
+    * @return list of maps
+    */
   def getMapsFromConfig(config: Config, path: String): List[Map[String, Any]] = {
     val list = config.getList(path).asScala
     list.flatMap { x =>
@@ -20,5 +24,4 @@ object Utils {
       }
     }.toList
   }
-  
 }

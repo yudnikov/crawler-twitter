@@ -33,3 +33,6 @@ libraryDependencies += ("org.apache.spark" % "spark-sql_2.11" % "2.2.0").exclude
 libraryDependencies += "com.datastax.cassandra" % "cassandra-driver-core" % "3.3.0"
 // https://mvnrepository.com/artifact/com.datastax.spark/spark-cassandra-connector_2.11
 libraryDependencies += "com.datastax.spark" % "spark-cassandra-connector_2.11" % "2.0.5"
+
+// https://mvnrepository.com/artifact/org.scalatest/scalatest_2.11
+libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.4" % "test"

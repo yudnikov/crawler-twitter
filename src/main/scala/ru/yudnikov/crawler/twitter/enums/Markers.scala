@@ -6,9 +6,7 @@ import org.json4s.{CustomKeySerializer, CustomSerializer}
 import org.json4s.JsonAST.{JNull, JString}
 import org.slf4j.{Marker, MarkerFactory}
 
-/**
-  * Created by Don on 09.09.2017.
-  */
+/** Logger markers with some implicit magic */
 object Markers extends Enumeration {
   
   type Markers = Value
@@ -17,9 +15,14 @@ object Markers extends Enumeration {
   
   def marker(v: Markers.Value): Marker = MarkerFactory.getMarker(v.toString)
   
-  // Some implicit magic :)
+  /** Implicit conversion to marker
+    *
+    * @param value enum value
+    * @return marker
+    */
   implicit def asMarker(value: Markers.Value): Marker = marker(value)
   
+  /** JSON serializer */
   case object Serializer extends CustomSerializer[Markers.Value](_ =>
     ( {
       case JString(s) =>
