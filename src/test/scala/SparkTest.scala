@@ -2,6 +2,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import ru.yudnikov.crawler.twitter.Dependencies
 import ru.yudnikov.crawler.twitter.TwitterApp.actorSystem
 import ru.yudnikov.crawler.twitter.enums.Collectibles
+import ru.yudnikov.crawler.twitter.storage.Cassandra
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -12,22 +13,23 @@ import scala.concurrent.duration.Duration
 class SparkTest extends FlatSpec with Matchers {
   
   val testDependencies = Dependencies(s"test.conf")
+  val cassandra: Cassandra = testDependencies.cassandra
   
-  testDependencies.cassandra.dropKeyspace()
-  testDependencies.cassandra.prepareStorage()
+  cassandra.dropKeyspace()
+  cassandra.prepareStorage()
   
   private val id = testDependencies.random.nextLong()
   private val ids = for {
     _ <- 1 to 1000
   } yield testDependencies.random.nextLong()
   
-  testDependencies.cassandra.membersInsert(ids: _*)
+  cassandra.membersInsert(ids: _*)
   
-  testDependencies.cassandra.tableLength(Collectibles.MEMBERS) should be(1000)
+  cassandra.tableLength(Collectibles.MEMBERS) should be(1000)
   
-  testDependencies.cassandra.membersNonExistingSpark(ids: _*) should be(Nil)
+  cassandra.membersNonExistingSpark(ids: _*) should be(Nil)
   
-  Await.result(testDependencies.actorSystem.terminate(), Duration.Inf)
-  testDependencies.cassandra.terminate()
+  //Await.result(testDependencies.actorSystem.terminate(), Duration.Inf)
+  cassandra.terminate()
   
 }
